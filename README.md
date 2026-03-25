@@ -1,68 +1,33 @@
-# OAuth SSO Plugin for GLPI
+# GLPI Plugins
 
-Plugin enabling SSO authentication with **Microsoft** and/or **Google** using OAuth 2.0 / OpenID Connect.
+This repository is a **collection of independent GLPI plugins**. Each plugin lives in its own top-level directory (`oauthsso`, `branding`, …). They share no runtime dependency on each other unless explicitly documented in a plugin’s README.
 
-## Requirements
+Use this repo if you want the source for several plugins in one place. **Install only the folders you need** into your GLPI instance.
 
-- GLPI 10.0.0 or higher
-- PHP 8.1 or higher
-- PHP extensions: OpenSSL, JSON (included in PHP)
-- Composer libraries already bundled in GLPI: `thenetworg/oauth2-azure`, `league/oauth2-google`
+## Available plugins
 
-## Installation
+| Directory | Plugin | Description |
+|-----------|--------|-------------|
+| [`oauthsso/`](oauthsso/README.md) | **OAuth SSO** | Sign-in with Microsoft and/or Google using OAuth 2.0 / OpenID Connect. |
+| [`branding/`](branding/README.md) | **Branding** | Per-entity login background and logos, plus main menu logos. |
 
-1. Copy the `oauthsso` folder to the GLPI plugins directory (`plugins/oauthsso` or `marketplace/oauthsso`)
-2. Go to **Setup** > **Plugins**
-3. Install and activate the "OAuth SSO" plugin
+## How to install from this repository
 
-## Configuration
+GLPI expects each plugin under `plugins/<plugin_key>/` or `marketplace/<plugin_key>/`, where `<plugin_key>` matches the folder name (e.g. `oauthsso`, `branding`).
 
-### Microsoft (Azure AD / Entra ID)
+1. Copy **only** the plugin directory you need into your GLPI installation, for example:
+   - `path/to/glpi/plugins/oauthsso/`
+   - `path/to/glpi/plugins/branding/`
+2. In GLPI, go to **Setup** → **Plugins**, then install and enable the plugin.
+3. Follow the **Installation** and configuration sections in that plugin’s own README.
 
-1. Go to [Azure Portal](https://portal.azure.com) > **Microsoft Entra ID** > **App registrations** > **New registration**
-2. Redirect URI: **Web** → `https://your-glpi/plugins/oauthsso/front/callback.php`
-3. Under **API permissions**, add: Microsoft Graph > Delegated: `openid`, `email`, `profile`
+You can clone the whole repository and copy individual folders, or use a sparse checkout / submodule workflow if you prefer; GLPI does not require the repository root.
 
-### Google
+## Documentation
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com) > **APIs & Services** > **Credentials**
-2. Create **OAuth 2.0 Client ID** credentials (type: Web application)
-3. Under **Authorized redirect URIs**, add: `https://your-glpi/plugins/oauthsso/front/callback.php`
-
-### In GLPI
-
-1. Go to **Setup** > **OAuth SSO**
-2. For each provider (Microsoft, Google): enable and fill in **Client ID** and **Client Secret**
-3. For Microsoft: configure **Tenant ID** (`common` for multi-tenant)
-4. Set **Default profile** and **Default entity** for users created automatically
-
-## Login screen
-
-- **Single provider configured**: direct button "Login with Microsoft" or "Login with Google"
-- **Multiple providers**: "Login with" dropdown to select the provider
-
-## User creation
-
-Users are **created automatically** on first login via OAuth SSO:
-- **Microsoft**: login = `userPrincipalName` or `preferred_username`
-- **Google**: login = `email`
-- First and last name from provider claims
-- Profile and entity from plugin configuration
-
-## File structure
-
-```
-plugins/oauthsso/
-├── setup.php
-├── README.md
-├── inc/
-│   └── config.class.php
-└── front/
-    ├── config.form.php
-    ├── login.php      (initiates OAuth)
-    └── callback.php   (handles Azure/Google response)
-```
+- **Repository (this file):** what the collection contains and how folders map to GLPI.
+- **Each plugin:** its own `README.md` with requirements, installation, configuration, and usage.
 
 ## License
 
-GPL v2+
+Each plugin declares its license in `setup.php` and in its README. Refer to the individual plugin documentation for the exact terms.
