@@ -75,7 +75,7 @@ try {
             'clientSecret' => $client_secret,
             'redirectUri'  => $redirect_uri,
             'defaultEndPointVersion' => \TheNetworg\OAuth2\Client\Provider\Azure::ENDPOINT_VERSION_2_0,
-            'scopes'       => ['openid', 'email', 'profile'],
+            'scopes'       => ['openid', 'email', 'profile', 'https://graph.microsoft.com/User.Read'],
         ]);
         if (!empty($provider_config['tenant'])) {
             $provider->tenant = $provider_config['tenant'];

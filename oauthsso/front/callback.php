@@ -34,6 +34,39 @@
 
 require_once(__DIR__ . '/../../../inc/includes.php');
 
+/**
+ * Resolve first name and surname from OAuth userinfo / ID token / Graph shapes.
+ *
+ * @param array<string, mixed> $user_data
+ *
+ * @return array{firstname: string, realname: string}
+ */
+function plugin_oauthsso_extract_profile_names(array $user_data): array
+{
+    $firstname = trim((string) (
+        $user_data['given_name'] ?? $user_data['givenName'] ?? $user_data['firstname'] ?? ''
+    ));
+    $realname = trim((string) (
+        $user_data['family_name'] ?? $user_data['surname'] ?? $user_data['last_name'] ?? $user_data['lastName'] ?? ''
+    ));
+
+    if ($firstname === '' && $realname === '') {
+        $full = trim((string) (
+            $user_data['name'] ?? $user_data['displayName'] ?? ''
+        ));
+        if ($full !== '') {
+            $parts = preg_split('/\s+/u', $full, 2);
+            $firstname = $parts[0] ?? '';
+            $realname = $parts[1] ?? '';
+        }
+    }
+
+    return [
+        'firstname' => $firstname,
+        'realname'  => $realname,
+    ];
+}
+
 global $CFG_GLPI;
 
 $_SESSION["glpicookietest"] = 'testcookie';
@@ -110,7 +143,7 @@ if ($provider_id === PluginOauthssoConfig::PROVIDER_MICROSOFT) {
         'clientSecret' => $provider_config['client_secret'],
         'redirectUri'  => $redirect_uri,
         'defaultEndPointVersion' => \TheNetworg\OAuth2\Client\Provider\Azure::ENDPOINT_VERSION_2_0,
-        'scopes'       => ['openid', 'email', 'profile'],
+        'scopes'       => ['openid', 'email', 'profile', 'https://graph.microsoft.com/User.Read'],
     ]);
     if (!empty($provider_config['tenant'])) {
         $provider->tenant = $provider_config['tenant'];
@@ -130,6 +163,35 @@ try {
     $token = $provider->getAccessToken('authorization_code', ['code' => $_GET['code']]);
     $resource_owner = $provider->getResourceOwner($token);
     $user_data = $resource_owner->toArray();
+
+    if ($provider_id === PluginOauthssoConfig::PROVIDER_MICROSOFT && $provider instanceof \TheNetworg\OAuth2\Client\Provider\Azure) {
+        try {
+            $access_for_graph = $token;
+            $graph_me = $provider->get('me', $access_for_graph);
+            if (is_array($graph_me)) {
+                if (!empty($graph_me['givenName'])) {
+                    $user_data['given_name'] = $graph_me['givenName'];
+                    $user_data['givenName'] = $graph_me['givenName'];
+                }
+                if (!empty($graph_me['surname'])) {
+                    $user_data['family_name'] = $graph_me['surname'];
+                    $user_data['surname'] = $graph_me['surname'];
+                }
+                if (!empty($graph_me['displayName'])) {
+                    $user_data['displayName'] = $graph_me['displayName'];
+                }
+                if (!empty($graph_me['mail']) && empty($user_data['mail'])) {
+                    $user_data['mail'] = $graph_me['mail'];
+                }
+            }
+        } catch (Throwable $e) {
+            global $PHPLOGGER;
+            $PHPLOGGER->warning(
+                'OAuth SSO: Microsoft Graph /me skipped: ' . $e->getMessage(),
+                ['exception' => $e]
+            );
+        }
+    }
 } catch (Throwable $e) {
     global $PHPLOGGER;
     $PHPLOGGER->error('OAuth SSO callback error: ' . $e->getMessage(), ['exception' => $e]);
@@ -167,13 +229,14 @@ if (!$user->getFromDBbyName($login)) {
         $profiles_id = (int) ($oauth_config['profiles_id'] ?? 0);
         $entities_id = (int) ($oauth_config['entities_id'] ?? 0);
         $email = $user_data['mail'] ?? $user_data['email'] ?? $user_data['userPrincipalName'] ?? $user_data['preferred_username'] ?? '';
+        $names = plugin_oauthsso_extract_profile_names($user_data);
         $input = [
             'name'        => $login,
             'authtype'    => Auth::EXTERNAL,
             'auths_id'    => 0,
             '_extauth'    => true,
-            'realname'    => $user_data['family_name'] ?? $user_data['surname'] ?? '',
-            'firstname'   => $user_data['given_name'] ?? $user_data['givenName'] ?? '',
+            'realname'    => $names['realname'],
+            'firstname'   => $names['firstname'],
             'is_active'   => 1,
         ];
         if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
