@@ -196,7 +196,7 @@ try {
     global $PHPLOGGER;
     $PHPLOGGER->error('OAuth SSO callback error: ' . $e->getMessage(), ['exception' => $e]);
     Session::addMessageAfterRedirect(
-        htmlescape(sprintf(__('Authentication failed: %s'), $e->getMessage())),
+        __('Authentication failed. Please contact your administrator.'),
         false,
         ERROR
     );

@@ -62,7 +62,15 @@ if ($provider_config === null) {
 $redirect_uri = $CFG_GLPI['url_base'] . '/plugins/oauthsso/front/callback.php';
 $redirect_param = $_GET['redirect'] ?? '';
 if ($redirect_param !== '') {
-    $_SESSION['oauthsso_redirect'] = $redirect_param;
+    // Validate redirect target is same-origin or relative path
+    if (strpos($redirect_param, '://') === false && strpos($redirect_param, '//') !== 0) {
+        // Relative path or fragment — safe
+        $_SESSION['oauthsso_redirect'] = $redirect_param;
+    } elseif (strpos($redirect_param, $CFG_GLPI['url_base']) === 0) {
+        // Starts with our base URL — safe
+        $_SESSION['oauthsso_redirect'] = $redirect_param;
+    }
+    // Otherwise, reject the redirect parameter silently
 }
 $_SESSION['oauthsso_provider'] = $provider_id;
 
@@ -102,7 +110,7 @@ try {
     global $PHPLOGGER;
     $PHPLOGGER->error('OAuth SSO login error: ' . $e->getMessage(), ['exception' => $e]);
     Session::addMessageAfterRedirect(
-        htmlescape(sprintf(__('OAuth SSO error: %s'), $e->getMessage())),
+        __('OAuth SSO error. Please contact your administrator.'),
         false,
         ERROR
     );

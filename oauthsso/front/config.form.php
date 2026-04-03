@@ -37,6 +37,7 @@ require_once(__DIR__ . '/../../../inc/includes.php');
 global $CFG_GLPI;
 
 Session::checkRight('config', UPDATE);
+Session::checkCSRF($_POST);
 
 $config = new PluginOauthssoConfig();
 $current = PluginOauthssoConfig::getConfig();
